@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="controllers.MainController"
+      spacing="20" alignment="CENTER" style="-fx-padding: 20;">
+      
+    <Label text="فروشگاه آنلاین لوازم خانگی" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
+    
+    <ListView fx:id="productList" style="-fx-font-size: 16;"/>
+    
+
+</VBox>

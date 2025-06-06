@@ -1,0 +1,12 @@
+eclipse.preferences.version=1
+encoding//src/app/Main.java=UTF-8
+encoding//src/controllers/MainController.java=UTF-8
+encoding//src/database/Database.java=UTF-8
+encoding//src/database/ProductDAO.java=UTF-8
+encoding//src/models/Appliance.java=UTF-8
+encoding//src/models/Refrigerator.java=UTF-8
+encoding//src/models/Stove.java=UTF-8
+encoding//src/models/TV.java=UTF-8
+encoding//src/module-info.java=UTF-8
+encoding//src/views/Main.fxml=UTF-8
+encoding/<project>=windows-1252
