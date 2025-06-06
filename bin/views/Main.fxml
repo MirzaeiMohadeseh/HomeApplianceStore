@@ -3,14 +3,22 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<VBox xmlns="http://javafx.com/javafx/17"
+<HBox xmlns="http://javafx.com/javafx/17"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="controllers.MainController"
-      spacing="20" alignment="CENTER" style="-fx-padding: 20;">
-      
-    <Label text="فروشگاه آنلاین لوازم خانگی" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
+      spacing="0">
     
-    <ListView fx:id="productList" style="-fx-font-size: 16;"/>
-    
+    <!-- محتوای اصلی (لیست محصولات) -->
+    <VBox style="-fx-padding: 20;" spacing="20" alignment="CENTER" HBox.hgrow="ALWAYS">
+        <Label text="فروشگاه آنلاین لوازم خانگی" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
+        <ListView fx:id="productList" style="-fx-font-size: 16; -fx-pref-width: 600;"/>
+    </VBox>
 
-</VBox>
+    <!-- منوی کناری (قرارگیری در سمت راست) -->
+    <VBox style="-fx-background-color: #34495e; -fx-padding: 15;" spacing="10" prefWidth="200" HBox.hgrow="NEVER">
+        <Label text="منو" style="-fx-text-fill: white; -fx-font-size: 18; -fx-font-weight: bold;"/>
+        <Button text="صفحه اصلی" fx:id="homeButton" style="-fx-background-color: #2980b9; -fx-text-fill: white; -fx-pref-width: 180;"/>
+        <Button text="سبد خرید" fx:id="cartButton" style="-fx-background-color: #e67e22; -fx-text-fill: white; -fx-pref-width: 180;"/>
+    </VBox>
+
+</HBox>

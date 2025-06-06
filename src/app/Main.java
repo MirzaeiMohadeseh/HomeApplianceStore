@@ -19,7 +19,7 @@ public class Main extends Application {
     public static void showMainPage() throws IOException {
         FXMLLoader loader = new FXMLLoader(Main.class.getResource("/views/Main.fxml"));
         Parent root = loader.load();
-        primaryStage.setScene(new Scene(root, 600, 700));
+        primaryStage.setScene(new Scene(root, 800, 700));
         primaryStage.setTitle("فروشگاه آنلاین لوازم خانگی");
         primaryStage.show();
     }
