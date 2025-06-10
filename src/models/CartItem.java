@@ -9,12 +9,24 @@ public class CartItem {
         this.quantity = quantity;
     }
     
-    // Getters and Setters
     public Appliance getProduct() { return product; }
     public int getQuantity() { return quantity; }
     public void setQuantity(int quantity) { this.quantity = quantity; }
     
     public double getTotalPrice() {
         return product.getPrice() * quantity;
+    }
+    
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        CartItem cartItem = (CartItem) obj;
+        return product.equals(cartItem.product);
+    }
+    
+    @Override
+    public int hashCode() {
+        return product.hashCode();
     }
 }
