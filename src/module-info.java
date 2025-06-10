@@ -3,6 +3,7 @@ module HomeApplianceStore {
     requires javafx.fxml;
     requires java.sql; // اگر از دیتابیس استفاده می‌کنی
     requires java.base;
+	requires java.desktop;
 
     opens controllers to javafx.fxml;
     exports controllers;

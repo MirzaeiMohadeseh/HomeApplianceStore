@@ -8,8 +8,4 @@ public class Refrigerator extends Appliance {
         this.capacity = capacity;
     }
 
-    @Override
-    public void showDetails() {
-        System.out.println(name + " - " + brand + " - $" + price + " - " + capacity + " لیتر");
-    }
 }

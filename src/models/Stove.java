@@ -8,8 +8,4 @@ public class Stove extends Appliance {
         this.burners = burners;
     }
 
-    @Override
-    public void showDetails() {
-        System.out.println(name + " - " + brand + " - $" + price + " - " + burners + " شعله");
-    }
 }
