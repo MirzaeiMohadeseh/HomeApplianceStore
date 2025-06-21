@@ -1,21 +1,33 @@
 package controllers;
 
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.scene.control.ListView;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
-import javafx.scene.control.DialogPane;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.List;
+import java.util.Optional;
+
 import javafx.scene.control.Label;
 import javafx.event.ActionEvent;
+import database.Database;
 import database.ProductDAO;
 import models.Appliance;
 import models.CartItem;
+import models.User;
 import javafx.animation.TranslateTransition;
 import javafx.util.Duration;
 
@@ -26,6 +38,8 @@ public class MainController {
     @FXML private Button closeMenuButton;
     @FXML private Button cartButton;
     @FXML private Label balanceLabel;
+    @FXML private Button logoutButton;
+    private User currentUser;
     
     private boolean isMenuOpen = true;
     private ObservableList<CartItem> cartItems = FXCollections.observableArrayList();
@@ -42,9 +56,19 @@ public class MainController {
             if (cartButton != null) {
                 cartButton.setOnAction(this::showCart);
             }
+            
+            // تنظیم رویداد کلیک برای دکمه خروج
+            if (logoutButton != null) {
+                logoutButton.setOnAction(this::handleLogout);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+    public void setCurrentUser(User user) {
+        this.currentUser = user;
+        this.balance = user.getBalance();
+        updateBalanceDisplay();
     }
     
     private void updateBalanceDisplay() {
@@ -55,7 +79,7 @@ public class MainController {
     
     private void loadProductsFromDatabase() {
         try {
-            List<Appliance> products = ProductDAO.getProducts();
+            List<Appliance> products = ProductDAO.getAllProductsWithStock(); // تغییر این خط
             productList.getItems().addAll(products);
             
             productList.setCellFactory(lv -> new javafx.scene.control.ListCell<Appliance>() {
@@ -65,7 +89,8 @@ public class MainController {
                     if (empty || item == null) {
                         setText(null);
                     } else {
-                        setText(item.getName() + " - " + item.getBrand() + " - $" + item.getPrice());
+                        setText(item.getName() + " - " + item.getBrand() + " - $" + item.getPrice() + 
+                              " (موجودی: " + item.getStock() + ")");
                     }
                 }
             });
@@ -77,28 +102,41 @@ public class MainController {
     @FXML
     private void addToCart(ActionEvent event) {
         Appliance selectedProduct = productList.getSelectionModel().getSelectedItem();
+        
         if (selectedProduct != null) {
-            boolean found = false;
-            for (CartItem item : cartItems) {
-                if (item.getProduct().equals(selectedProduct)) {
-                    item.setQuantity(item.getQuantity() + 1);
-                    found = true;
-                    break;
+            // بررسی موجودی محصول
+            if (selectedProduct.getStock() > 0) {
+                boolean found = false;
+                for (CartItem item : cartItems) {
+                    if (item.getProduct().getId() == selectedProduct.getId()) {
+                        item.setQuantity(item.getQuantity() + 1);
+                        found = true;
+                        break;
+                    }
                 }
+                
+                if (!found) {
+                    cartItems.add(new CartItem(selectedProduct, 1));
+                }
+                
+                // کاهش موجودی در لیست نمایش
+                selectedProduct.setStock(selectedProduct.getStock() - 1);
+                productList.refresh(); // رفرش لیست برای نمایش تغییرات
+                
+                showAlert(AlertType.INFORMATION, "موفقیت", 
+                        "محصول به سبد خرید اضافه شد", 
+                        selectedProduct.getName() + " به سبد خرید شما اضافه شد.");
+            } else {
+                showAlert(AlertType.WARNING, "خطا", 
+                        "موجودی کافی نیست", 
+                        "این محصول در حال حاضر موجود نیست.");
             }
-            
-            if (!found) {
-                cartItems.add(new CartItem(selectedProduct, 1));
-            }
-            
-            showAlert(AlertType.INFORMATION, "موفقیت", "محصول به سبد خرید اضافه شد", 
-                     selectedProduct.getName() + " به سبد خرید شما اضافه شد.");
         } else {
-            showAlert(AlertType.WARNING, "خطا", "محصولی انتخاب نشده", 
-                     "لطفاً یک محصول از لیست انتخاب کنید.");
+            showAlert(AlertType.WARNING, "خطا", 
+                    "محصولی انتخاب نشده", 
+                    "لطفاً یک محصول از لیست انتخاب کنید.");
         }
     }
-    
     @FXML
     private void showCart(ActionEvent event) {
         Alert alert = new Alert(AlertType.INFORMATION);
@@ -135,13 +173,30 @@ public class MainController {
     private void processPayment(double amount) {
         if (balance >= amount) {
             balance -= amount;
+            currentUser.setBalance(balance);
             cartItems.clear();
             updateBalanceDisplay();
+            
+            // ذخیره موجودی جدید در دیتابیس
+            updateUserBalanceInDatabase();
+            
             showAlert(AlertType.INFORMATION, "پرداخت موفق", "پرداخت با موفقیت انجام شد", 
                      "مبلغ $" + amount + " از حساب شما کسر شد.\nموجودی جدید: $" + balance);
         } else {
             showAlert(AlertType.ERROR, "خطای پرداخت", "موجودی کافی نیست", 
                      "موجودی حساب شما کافی نیست.\nموجودی فعلی: $" + balance + "\nمبلغ پرداخت: $" + amount);
+        }
+    }
+    private void updateUserBalanceInDatabase() {
+        String sql = "UPDATE users SET balance = ? WHERE id = ?";
+        
+        try (Connection conn = Database.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setDouble(1, balance);
+            stmt.setInt(2, currentUser.getId());
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
     }
     
@@ -150,16 +205,6 @@ public class MainController {
         alert.setTitle(title);
         alert.setHeaderText(header);
         alert.setContentText(content);
-        alert.showAndWait();
-     // تغییر ظاهر پنجره هشدار
-        DialogPane dialogPane = alert.getDialogPane();
-        dialogPane.setStyle("-fx-background-color: #2c3e50; -fx-border-color: #e74c3c; "
-                          + "-fx-border-radius: 10; -fx-text-fill: white; -fx-font-size: 14;");
-        
-        // تغییر رنگ دکمه‌ها
-        dialogPane.lookupButton(ButtonType.OK).setStyle("-fx-background-color: #27ae60; -fx-text-fill: white;");
-
-        // نمایش هشدار
         alert.showAndWait();
     }
     
@@ -190,5 +235,30 @@ public class MainController {
         tt.setToX(sideMenu.getWidth());
         tt.play();
         isMenuOpen = false;
+    }
+    @FXML
+    private void handleLogout(ActionEvent event) {
+        Alert confirmAlert = new Alert(AlertType.CONFIRMATION);
+        confirmAlert.setTitle("تأیید خروج");
+        confirmAlert.setHeaderText("آیا مطمئن هستید می‌خواهید از حساب خود خارج شوید؟");
+        confirmAlert.setContentText("در صورت خروج، سبد خرید شما پاک خواهد شد.");
+        
+        Optional<ButtonType> result = confirmAlert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            try {
+                cartItems.clear();
+                
+                FXMLLoader loader = new FXMLLoader(getClass().getResource("/views/Login.fxml"));
+                Parent root = loader.load();
+                
+                Stage stage = (Stage) logoutButton.getScene().getWindow();
+                stage.setScene(new Scene(root, 400, 300));
+                stage.setTitle("ورود به فروشگاه");
+            } catch (IOException e) {
+                e.printStackTrace();
+                showAlert(AlertType.ERROR, "خطا", "خطا در خروج از حساب", 
+                        "خطایی در بازگشت به صفحه ورود رخ داده است.");
+            }
+        }
     }
 }

@@ -1,7 +1,10 @@
 package models;
 
 public class TV extends Appliance {
-    public TV(String name, double price, String brand, int screenSize) {
-        super(name, price, brand);
+    private int screenSize;
+    
+    public TV(int id, String name, double price, String brand, int screenSize) {
+        super(id, name, price, brand, "tv"); // نوع ثابت برای تلویزیون
+        this.screenSize = screenSize;
     }
 }

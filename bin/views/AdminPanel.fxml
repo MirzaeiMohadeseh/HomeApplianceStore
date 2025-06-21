@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/17" 
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="controllers.AdminController"
+      spacing="10" 
+      style="-fx-padding: 20;">
+
+    <Label text="پنل مدیریت" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
+    
+    <TableView fx:id="productsTable">
+        <columns>
+            <TableColumn text="نام محصول" prefWidth="150" fx:id="nameCol"/>
+            <TableColumn text="برند" prefWidth="100" fx:id="brandCol"/>
+            <TableColumn text="قیمت" prefWidth="100" fx:id="priceCol"/>
+            <TableColumn text="موجودی" prefWidth="100" fx:id="stockCol"/>
+        </columns>
+    </TableView>
+    
+    <HBox spacing="10">
+        <Button text="افزایش موجودی" onAction="#increaseStock" style="-fx-background-color: #2ecc71; -fx-text-fill: white;"/>
+        <Button text="کاهش موجودی" onAction="#decreaseStock" style="-fx-background-color: #e67e22; -fx-text-fill: white;"/>
+        <Button text="سفارش از انبار" onAction="#orderFromWarehouse" style="-fx-background-color: #3498db; -fx-text-fill: white;"/>
+        <Button text="خروج از حساب" onAction="#logout" style="-fx-background-color: #e74c3c; -fx-text-fill: white;"/>
+    </HBox>
+</VBox>

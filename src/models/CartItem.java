@@ -1,5 +1,7 @@
 package models;
 
+import java.util.Objects;
+
 public class CartItem {
     private Appliance product;
     private int quantity;
@@ -22,11 +24,11 @@ public class CartItem {
         if (this == obj) return true;
         if (obj == null || getClass() != obj.getClass()) return false;
         CartItem cartItem = (CartItem) obj;
-        return product.equals(cartItem.product);
+        return product.getId() == cartItem.product.getId();
     }
     
     @Override
     public int hashCode() {
-        return product.hashCode();
+        return Objects.hash(product.getId());
     }
 }

@@ -21,10 +21,10 @@
             <ListView fx:id="productList" style="-fx-font-size: 16; -fx-pref-width: 600;"/>
             
             <Button text="اضافه کردن به سبد خرید" 
-                    style="-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14;"
-                    onAction="#addToCart"
-                    fx:id="addToCartButton"
-                    prefWidth="200"/>
+        style="-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14;"
+        onAction="#addToCart"
+        fx:id="addToCartButton"
+        prefWidth="200"/>
         </VBox>
     </center>
     
@@ -36,9 +36,9 @@
             <Button fx:id="cartButton" text="سبد خرید" 
                     style="-fx-background-color: #e67e22; -fx-text-fill: white; -fx-pref-width: 180;"/>
             
-            <Button fx:id="closeMenuButton" text="✕ بستن" 
-                    style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-pref-width: 180;"
-                    onAction="#closeMenu"/>
+			<Button fx:id="logoutButton" text="خروج از حساب" 
+        		style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-pref-width: 180;"
+        		onAction="#handleLogout"/>
         </VBox>
     </right>
     
