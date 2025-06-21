@@ -10,18 +10,19 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.control.Label;
 import java.io.IOException;
+import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Optional;
-
-import javafx.scene.control.Label;
 import javafx.event.ActionEvent;
 import database.Database;
 import database.ProductDAO;
@@ -48,16 +49,14 @@ public class MainController {
     @FXML
     public void initialize() {
         try {
-            loadProductsFromDatabase();
+            setupProductList();
             setupMenuAnimation();
             updateBalanceDisplay();
             
-            // تنظیم رویداد کلیک برای دکمه سبد خرید
             if (cartButton != null) {
                 cartButton.setOnAction(this::showCart);
             }
             
-            // تنظیم رویداد کلیک برای دکمه خروج
             if (logoutButton != null) {
                 logoutButton.setOnAction(this::handleLogout);
             }
@@ -65,6 +64,46 @@ public class MainController {
             e.printStackTrace();
         }
     }
+
+    private void setupProductList() {
+        productList.setCellFactory(lv -> new javafx.scene.control.ListCell<Appliance>() {
+            private final ImageView imageView = new ImageView();
+            private final Label label = new Label();
+            private final HBox hbox = new HBox(10, imageView, label);
+
+            {
+                imageView.setFitHeight(50);
+                imageView.setFitWidth(50);
+                imageView.setPreserveRatio(true);
+            }
+
+            @Override
+            protected void updateItem(Appliance item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                } else {
+                    try {
+                        InputStream is = getClass().getResourceAsStream(item.getImagePath());
+                        if (is != null) {
+                            imageView.setImage(new Image(is));
+                        } else {
+                            // نمایش تصویر پیش‌فرض اگر عکس محصول موجود نبود
+                            imageView.setImage(new Image(getClass().getResourceAsStream("/images/default_product.png")));
+                        }
+                    } catch (Exception e) {
+                        imageView.setImage(null);
+                    }
+                    label.setText(String.format("%s - %s - $%.2f\nموجودی: %d", 
+                            item.getName(), item.getBrand(), item.getPrice(), item.getStock()));
+                    setGraphic(hbox);
+                }
+            }
+        });
+        
+        loadProductsFromDatabase();
+    }
+    
     public void setCurrentUser(User user) {
         this.currentUser = user;
         this.balance = user.getBalance();
@@ -79,23 +118,12 @@ public class MainController {
     
     private void loadProductsFromDatabase() {
         try {
-            List<Appliance> products = ProductDAO.getAllProductsWithStock(); // تغییر این خط
-            productList.getItems().addAll(products);
-            
-            productList.setCellFactory(lv -> new javafx.scene.control.ListCell<Appliance>() {
-                @Override
-                protected void updateItem(Appliance item, boolean empty) {
-                    super.updateItem(item, empty);
-                    if (empty || item == null) {
-                        setText(null);
-                    } else {
-                        setText(item.getName() + " - " + item.getBrand() + " - $" + item.getPrice() + 
-                              " (موجودی: " + item.getStock() + ")");
-                    }
-                }
-            });
+            List<Appliance> products = ProductDAO.getAllProductsWithStock();
+            productList.getItems().setAll(products);
         } catch (Exception e) {
             e.printStackTrace();
+            showAlert(AlertType.ERROR, "خطا", "خطا در بارگذاری محصولات", 
+                     "خطایی در دریافت اطلاعات محصولات رخ داده است.");
         }
     }
     
@@ -104,24 +132,23 @@ public class MainController {
         Appliance selectedProduct = productList.getSelectionModel().getSelectedItem();
         
         if (selectedProduct != null) {
-            // بررسی موجودی محصول
             if (selectedProduct.getStock() > 0) {
-                boolean found = false;
-                for (CartItem item : cartItems) {
-                    if (item.getProduct().getId() == selectedProduct.getId()) {
-                        item.setQuantity(item.getQuantity() + 1);
-                        found = true;
-                        break;
-                    }
-                }
-                
-                if (!found) {
-                    cartItems.add(new CartItem(selectedProduct, 1));
-                }
-                
-                // کاهش موجودی در لیست نمایش
+                // کاهش موجودی در حافظه
                 selectedProduct.setStock(selectedProduct.getStock() - 1);
-                productList.refresh(); // رفرش لیست برای نمایش تغییرات
+                
+                // به‌روزرسانی فوری در دیتابیس
+                updateSingleProductStock(selectedProduct.getId(), selectedProduct.getStock());
+                
+                // اضافه کردن به سبد خرید
+                cartItems.stream()
+                    .filter(item -> item.getProduct().getId() == selectedProduct.getId())
+                    .findFirst()
+                    .ifPresentOrElse(
+                        item -> item.setQuantity(item.getQuantity() + 1),
+                        () -> cartItems.add(new CartItem(selectedProduct, 1))
+                    );
+                
+                productList.refresh();
                 
                 showAlert(AlertType.INFORMATION, "موفقیت", 
                         "محصول به سبد خرید اضافه شد", 
@@ -137,6 +164,21 @@ public class MainController {
                     "لطفاً یک محصول از لیست انتخاب کنید.");
         }
     }
+
+    private void updateSingleProductStock(int productId, int newStock) {
+        String sql = "UPDATE products SET stock = ? WHERE id = ?";
+        
+        try (Connection conn = Database.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, newStock);
+            stmt.setInt(2, productId);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            showAlert(AlertType.ERROR, "خطا", "خطا در به‌روزرسانی موجودی", 
+                     "خطایی در به‌روزرسانی موجودی محصول رخ داده است.");
+        }
+    }
     @FXML
     private void showCart(ActionEvent event) {
         Alert alert = new Alert(AlertType.INFORMATION);
@@ -144,19 +186,20 @@ public class MainController {
         alert.setHeaderText("محصولات انتخاب شده:");
         
         StringBuilder content = new StringBuilder();
-        final double[] total = {0.0}; // استفاده از آرایه برای حل مشکل final
-        
+        double total = cartItems.stream()
+                           .mapToDouble(CartItem::getTotalPrice)
+                           .sum();
+
         if (cartItems.isEmpty()) {
             content.append("سبد خرید شما خالی است.");
         } else {
-            for (CartItem item : cartItems) {
-                content.append(item.getProduct().getName())
-                      .append(" - تعداد: ").append(item.getQuantity())
-                      .append(" - قیمت: $").append(item.getTotalPrice())
-                      .append("\n");
-                total[0] += item.getTotalPrice();
-            }
-            content.append("\nجمع کل: $").append(total[0]);
+            cartItems.forEach(item -> 
+                content.append(String.format("%s - تعداد: %d - قیمت: $%.2f%n",
+                    item.getProduct().getName(),
+                    item.getQuantity(),
+                    item.getTotalPrice()))
+            );
+            content.append(String.format("%nجمع کل: $%.2f", total));
             
             ButtonType payButton = new ButtonType("پرداخت");
             alert.getButtonTypes().add(payButton);
@@ -164,7 +207,7 @@ public class MainController {
             alert.setContentText(content.toString());
             alert.showAndWait().ifPresent(buttonType -> {
                 if (buttonType == payButton) {
-                    processPayment(total[0]);
+                    processPayment(total);
                 }
             });
         }
@@ -172,19 +215,50 @@ public class MainController {
     
     private void processPayment(double amount) {
         if (balance >= amount) {
+            // کاهش موجودی کاربر
             balance -= amount;
             currentUser.setBalance(balance);
+            
+            // کاهش موجودی کالاها در دیتابیس
+            updateProductStocksInDatabase();
+            
             cartItems.clear();
             updateBalanceDisplay();
-            
-            // ذخیره موجودی جدید در دیتابیس
             updateUserBalanceInDatabase();
             
             showAlert(AlertType.INFORMATION, "پرداخت موفق", "پرداخت با موفقیت انجام شد", 
-                     "مبلغ $" + amount + " از حساب شما کسر شد.\nموجودی جدید: $" + balance);
+                     String.format("مبلغ $%.2f از حساب شما کسر شد.%nموجودی جدید: $%.2f", amount, balance));
         } else {
             showAlert(AlertType.ERROR, "خطای پرداخت", "موجودی کافی نیست", 
-                     "موجودی حساب شما کافی نیست.\nموجودی فعلی: $" + balance + "\nمبلغ پرداخت: $" + amount);
+                     String.format("موجودی حساب شما کافی نیست.%nموجودی فعلی: $%.2f%nمبلغ پرداخت: $%.2f", 
+                             balance, amount));
+        }
+    }
+
+    private void updateProductStocksInDatabase() {
+        String sql = "UPDATE products SET stock = ? WHERE id = ?";
+        
+        try (Connection conn = Database.getConnection()) {
+            // استفاده از تراکنش برای اطمینان از تمامیت داده‌ها
+            conn.setAutoCommit(false);
+            
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                for (CartItem item : cartItems) {
+                    stmt.setInt(1, item.getProduct().getStock());
+                    stmt.setInt(2, item.getProduct().getId());
+                    stmt.addBatch();
+                }
+                
+                stmt.executeBatch();
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            showAlert(AlertType.ERROR, "خطا", "خطا در به‌روزرسانی موجودی کالاها", 
+                     "خطایی در به‌روزرسانی موجودی کالاها رخ داده است.");
         }
     }
     private void updateUserBalanceInDatabase() {
@@ -197,6 +271,8 @@ public class MainController {
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
+            showAlert(AlertType.ERROR, "خطا", "خطا در به‌روزرسانی موجودی", 
+                     "خطایی در به‌روزرسانی موجودی حساب رخ داده است.");
         }
     }
     
@@ -214,28 +290,28 @@ public class MainController {
     
     @FXML
     private void toggleMenu() {
-        if (isMenuOpen) {
-            closeMenu();
-        } else {
-            openMenu();
-        }
+        if (isMenuOpen) closeMenu();
+        else openMenu();
     }
     
     @FXML
     private void openMenu() {
-        TranslateTransition tt = new TranslateTransition(Duration.millis(300), sideMenu);
-        tt.setToX(0);
-        tt.play();
+        animateMenu(0);
         isMenuOpen = true;
     }
     
     @FXML
     private void closeMenu() {
-        TranslateTransition tt = new TranslateTransition(Duration.millis(300), sideMenu);
-        tt.setToX(sideMenu.getWidth());
-        tt.play();
+        animateMenu(sideMenu.getWidth());
         isMenuOpen = false;
     }
+    
+    private void animateMenu(double targetX) {
+        TranslateTransition tt = new TranslateTransition(Duration.millis(300), sideMenu);
+        tt.setToX(targetX);
+        tt.play();
+    }
+    
     @FXML
     private void handleLogout(ActionEvent event) {
         Alert confirmAlert = new Alert(AlertType.CONFIRMATION);
@@ -243,22 +319,22 @@ public class MainController {
         confirmAlert.setHeaderText("آیا مطمئن هستید می‌خواهید از حساب خود خارج شوید؟");
         confirmAlert.setContentText("در صورت خروج، سبد خرید شما پاک خواهد شد.");
         
-        Optional<ButtonType> result = confirmAlert.showAndWait();
-        if (result.isPresent() && result.get() == ButtonType.OK) {
-            try {
-                cartItems.clear();
-                
-                FXMLLoader loader = new FXMLLoader(getClass().getResource("/views/Login.fxml"));
-                Parent root = loader.load();
-                
-                Stage stage = (Stage) logoutButton.getScene().getWindow();
-                stage.setScene(new Scene(root, 400, 300));
-                stage.setTitle("ورود به فروشگاه");
-            } catch (IOException e) {
-                e.printStackTrace();
-                showAlert(AlertType.ERROR, "خطا", "خطا در خروج از حساب", 
-                        "خطایی در بازگشت به صفحه ورود رخ داده است.");
+        confirmAlert.showAndWait().ifPresent(buttonType -> {
+            if (buttonType == ButtonType.OK) {
+                try {
+                    cartItems.clear();
+                    FXMLLoader loader = new FXMLLoader(getClass().getResource("/views/Login.fxml"));
+                    Parent root = loader.load();
+                    
+                    Stage stage = (Stage) logoutButton.getScene().getWindow();
+                    stage.setScene(new Scene(root, 400, 300));
+                    stage.setTitle("ورود به فروشگاه");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    showAlert(AlertType.ERROR, "خطا", "خطا در خروج از حساب", 
+                            "خطایی در بازگشت به صفحه ورود رخ داده است.");
+                }
             }
-        }
+        });
     }
 }

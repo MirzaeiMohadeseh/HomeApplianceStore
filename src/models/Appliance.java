@@ -5,22 +5,29 @@ public abstract class Appliance {
     protected String name;
     protected double price;
     protected String brand;
-    private int stock;
+    protected  String imagePath;
+    protected int stock;
     protected String type;
 
-    public Appliance(int id, String name, double price, String brand, String type) {
+    public Appliance(int id, String name, double price, String brand,String imagePath,int stock, String type) {
     	this.id = id;
         this.name = name;
         this.price = price;
         this.brand = brand;
+        this.imagePath = imagePath;
+        this.stock = stock;
         this.type = type;
+    }
+    public void setStock(int stock) {
+        this.stock = stock;
     }
 
     public int getId() { return id; }
     public String getName() { return name; }
     public double getPrice() { return price; }
     public String getBrand() { return brand; }
-    public String getType() {return type;}
+    public String getImagePath() {return imagePath;}
     public int getStock() { return stock; }
-    public void setStock(int stock) { this.stock = stock; }
+    public String getType() {return type;}
+
 }

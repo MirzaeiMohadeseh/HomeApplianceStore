@@ -20,6 +20,7 @@ public class AdminController {
     @FXML private TableColumn<Appliance, Double> priceCol;
     @FXML private TableColumn<Appliance, Integer> stockCol;
 
+    
     @FXML
     public void initialize() {
         setupTable();
@@ -49,7 +50,7 @@ public class AdminController {
     private void increaseStock() {
         Appliance selected = productsTable.getSelectionModel().getSelectedItem();
         if (selected != null) {
-            ProductDAO.updateStock(selected.getId(), selected.getStock() + 1);
+            ProductDAO.updateProductStock(selected.getId(), selected.getStock() + 1);
             loadProducts();
             showAlert("موفقیت", "موجودی محصول افزایش یافت");
         }
@@ -59,7 +60,7 @@ public class AdminController {
     private void decreaseStock() {
         Appliance selected = productsTable.getSelectionModel().getSelectedItem();
         if (selected != null && selected.getStock() > 0) {
-            ProductDAO.updateStock(selected.getId(), selected.getStock() - 1);
+            ProductDAO.updateProductStock(selected.getId(), selected.getStock() - 1);
             loadProducts();
             showAlert("موفقیت", "موجودی محصول کاهش یافت");
         } else {

@@ -1,12 +1,12 @@
 package database;
 
+import models.Appliance;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import models.Appliance;
 import models.Stove;
 import models.TV;
 import models.Refrigerator;
@@ -35,33 +35,40 @@ public class ProductDAO {
 	    String name = rs.getString("name");
 	    double price = rs.getDouble("price");
 	    String brand = rs.getString("brand");
+	    String imagePath = rs.getString("image_path");
 	    int stock = rs.getInt("stock");
 	    String type = rs.getString("type");
 	    
-	    // حالا type از سوپرکلاس به ارث می‌رسد
+	    Appliance product = null;
+	    
 	    switch (type.toLowerCase()) {
 	        case "stove":
-	            return new Stove(id, name, price, brand, 4);
+	            product = new Stove(id, name, price, brand, imagePath, stock, type, 4);
+	            break;
 	        case "tv":
-	            return new TV(id, name, price, brand, 55);
+	            product = new TV(id, name, price, brand, imagePath, stock, type, 55);
+	            break;
 	        case "refrigerator":
-	            return new Refrigerator(id, name, price, brand, 300);
+	            product = new Refrigerator(id, name, price, brand, imagePath, stock, type, 300);
+	            break;
 	        default:
-	            return new Appliance(id, name, price, brand, type) {};
+	            product = new Appliance(id, name, price, brand, imagePath, stock, type) {};
 	    }
+	    
+	    return product;
 	}
 
-	public static boolean updateStock(int productId, int newStock) {
-        String sql = "UPDATE products SET stock = ? WHERE id = ?";
-        
-        try (Connection conn = Database.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, newStock);
-            stmt.setInt(2, productId);
-            return stmt.executeUpdate() > 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
+	public static boolean updateProductStock(int productId, int newStock) {
+	    String sql = "UPDATE products SET stock = ? WHERE id = ?";
+	    
+	    try (Connection conn = Database.getConnection();
+	         PreparedStatement stmt = conn.prepareStatement(sql)) {
+	        stmt.setInt(1, newStock);
+	        stmt.setInt(2, productId);
+	        return stmt.executeUpdate() > 0;
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	        return false;
+	    }
+	}
 }
